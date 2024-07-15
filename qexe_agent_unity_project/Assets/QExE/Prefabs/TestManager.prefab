@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &406215535758681037
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 406215535758681027}
+  - component: {fileID: 406215535758681026}
+  - component: {fileID: 406215535758681024}
+  - component: {fileID: 406215535758681025}
+  m_Layer: 0
+  m_Name: TestManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 2800000, guid: 7c10acb59dbb8a24ca665b0be968b088, type: 3}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 4294967295
+  m_IsActive: 1
+--- !u!4 &406215535758681027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 406215535758681037}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.083, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &406215535758681026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 406215535758681037}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 714f8881904b5124c9c39ee4a2257d29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  OSCManager: {fileID: 0}
+  SceneOSCManagerFound: 0
+  TestInterface: {fileID: 0}
+  NextButton: {fileID: 0}
+  InterfaceNextButtonFound: 0
+  StartPlaybackButton: {fileID: 0}
+  InterfacePlayButtonFound: 0
+  ThisSceneID: 
+  ThisSceneVideoPath: 
+  ThisSceneVideoID: 0
+  ThisSceneType: 0
+  NextSceneID: 
+  NextVideoPath: 
+  NextVideoID: 0
+  SimulatorNext: 0
+  ChosenQuestionnaire: 
+  QuestionnaireIntegration: 
+  QuestionnaireInterfaces:
+  - {fileID: 5378090446009878059, guid: 01f3269413d14ba44aaa12235bdb8593, type: 3}
+  - {fileID: 8512170055536749922, guid: 681ef2d18fb5caa439000044a33c8399, type: 3}
+  ChosenMethodology: 
+  NumberOfConditions: 0
+  MethodologyInterfaces:
+  - {fileID: 9170874877938011674, guid: 73aeb958103503d44bfd225716171144, type: 3}
+  - {fileID: 9170874877938011674, guid: f94f2f6b8d585614ba2d10a7ba595ceb, type: 3}
+  - {fileID: 9170874877938011674, guid: 4ef4aa113651c6c42b9fa93c1797574b, type: 3}
+  - {fileID: 9170874877938011674, guid: f9cce4da8cd704b4ca7a16bdaf8fecbe, type: 3}
+  - {fileID: 3798243030488114651, guid: 356f51e4fb66f884798a5663ce62ea8d, type: 3}
+--- !u!114 &406215535758681024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 406215535758681037}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce6743ee803f87d4cae0408c4441c993, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  recordTest: 1
+  resultsDirectoryReceived: 0
+  resultsDirectory: 
+  _receiver: {fileID: 0}
+  _transmitter: {fileID: 0}
+--- !u!114 &406215535758681025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 406215535758681037}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2995998adae2b04092ef348ba77179a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Transmitter: {fileID: 0}
+  Receiver: {fileID: 0}
+  measure: 0
