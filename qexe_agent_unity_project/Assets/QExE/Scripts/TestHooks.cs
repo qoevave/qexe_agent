@@ -20,6 +20,8 @@ public class TestHooks : MonoBehaviour
 
 	private Camera VR_MAIN_CAMERA;
 
+	public GameObject ReaperOSCManager;
+
 	/// <summary>
 	/// When the prefab of a user interface is instantiated with this component, it will 
 	/// find the main camera and osc manager, and hook them into the missing parts of other
@@ -36,6 +38,7 @@ public class TestHooks : MonoBehaviour
 		{
 			VR_MAIN_CAMERA = GameObject.Find("Main Camera").GetComponent<Camera>();
 			OSCMANAGER = GameObject.Find("OSCManager");
+			ReaperOSCManager = GameObject.Find("ReaperOSCManager");	// Find Object called ReaperOSCManager in the Hierarchy
 
 			CameraFound = true;
 			OSCManagerFound = true;
@@ -45,7 +48,8 @@ public class TestHooks : MonoBehaviour
 			Debug.LogWarning("Could not find requires scene components: " + e);
 		}
 
-		UI_OSC.OSCManager = OSCMANAGER;
+		UI_OSC.OSCManager = OSCMANAGER; 				// OSCManager gets applied here
+		UI_OSC.ReaperOSCManager = ReaperOSCManager;		// Pass a reference to this Game Object to our OSCPacket Script
 		UI_CANVAS.worldCamera = VR_MAIN_CAMERA;
 	}
 

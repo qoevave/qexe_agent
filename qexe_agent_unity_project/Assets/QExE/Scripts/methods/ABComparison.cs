@@ -155,6 +155,9 @@ public class ABComparison : MonoBehaviour
         var colorB = BtnB.GetComponent<Button>().colors;
         colorB.normalColor = inactiveColor;
         BtnB.GetComponent<Button>().colors = colorB;
+
+        _OSCPacket.SendToReaper("/track/1/solo", 1); // Solo track 1
+        _OSCPacket.SendToReaper("/track/2/solo", 0); // Unsolo track 2
     }
 
     private void SelectB()
@@ -168,5 +171,9 @@ public class ABComparison : MonoBehaviour
         var colorB = BtnB.GetComponent<Button>().colors;
         colorB.normalColor = activeColor;
         BtnB.GetComponent<Button>().colors = colorB;
+ 
+        _OSCPacket.SendToReaper("/track/2/solo", 1); // Solo track 1
+        _OSCPacket.SendToReaper("/track/1/solo", 0); // Unsolo track 2
+
     }
 }

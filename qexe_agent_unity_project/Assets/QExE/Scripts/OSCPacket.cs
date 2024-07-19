@@ -12,13 +12,19 @@ namespace extOSC
 
         public GameObject OSCManager;
 
+        public GameObject ReaperOSCManager;         //declared new ReaperOSCManager
+
         private OSCTransmitter Transmitter;
+
+        public OSCTransmitter ReaperOSCTransmitter;  //declared a new Reaper Transmitter
+
         private OSCReceiver Receiver;
 
         // Start is called before the first frame update
         void Start()
         {
             Transmitter = OSCManager.GetComponent<OSCTransmitter>();
+            ReaperOSCTransmitter = ReaperOSCManager.GetComponent<OSCTransmitter>(); //From this Gameobject we get the Component of type OSCTransmitter and storing it into an instance called ReaperOSCTransmitter
             Receiver= OSCManager.GetComponent<OSCReceiver>();
         }
 
@@ -47,6 +53,18 @@ namespace extOSC
             var message = new OSCMessage(address, value);
 
             Transmitter.Send(message);
+            
         }
+
+
+        public void SendToReaper(string address, int value)
+        {
+            var message = new OSCMessage(address);
+            message.AddValue(OSCValue.Int(value));
+
+            ReaperOSCTransmitter.Send(message);
+            
+        }
+    
     }
 }
