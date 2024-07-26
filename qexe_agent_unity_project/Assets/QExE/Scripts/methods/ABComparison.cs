@@ -120,6 +120,8 @@ public class ABComparison : MonoBehaviour
 
             
         }
+
+        _OSCPacket.SendToReaper("/master/mute", 0); // Unmute master channel, added: 26.07.
     }
 
     private void OnNextPairButton()
