@@ -26,6 +26,8 @@ public class ABComparison : MonoBehaviour
 
     public int numberOfconditions;
 
+    public int Multipler = 1;
+
     public int currentPair = 0;
   
     public GameObject currentPairsLabel;
@@ -36,6 +38,8 @@ public class ABComparison : MonoBehaviour
     private bool startingColors = false;
 
     private Scene currentScene;
+
+ 
 
 
 
@@ -69,9 +73,10 @@ public class ABComparison : MonoBehaviour
         _testmanager = GameObject.Find("TestManager").GetComponent<TestManager>();
         _OSCPacket = this.GetComponent<OSCPacket>();
         numberOfconditions = _testmanager.NumberOfConditions;
+        Multipler = _testmanager.RepetitionMultiplier;
         initialized = true;
         currentScene = SceneManager.GetActiveScene();
-        maxPairs = ((numberOfconditions * (numberOfconditions -1)))/2;
+        maxPairs = (((numberOfconditions * (numberOfconditions -1)))/2)* Multipler;
 
         // Add event listeners to the play and next buttons. 
         NextPairBtn.onClick.AddListener(() => OnNextPairButton());

@@ -61,6 +61,8 @@ public class TestManager : MonoBehaviour
 
     public GameObject[] MethodologyInterfaces;
 
+    public int RepetitionMultiplier = 1;
+
 
     #endregion
 
@@ -445,6 +447,7 @@ public class TestManager : MonoBehaviour
                 NumberOfConditions = msg.FindValues(OSCValueType.Int)[0].IntValue;
                 ChosenQuestionnaire = msg.FindValues(OSCValueType.String)[2].StringValue;
                 QuestionnaireIntegration = msg.FindValues(OSCValueType.String)[3].StringValue;
+                RepetitionMultiplier = msg.FindValues(OSCValueType.Int)[1].IntValue;
                 Debug.Log("<color=cyan><b>QExE:udp:in: </b></color> <<-- receiving_paradigm_information:" + ChosenMethodology + NumberOfConditions + ChosenQuestionnaire + QuestionnaireIntegration);
                 SetMethodologyInterface(ChosenMethodology);
                 break;
