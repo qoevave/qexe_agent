@@ -117,8 +117,11 @@ public class ABComparison : MonoBehaviour
         {
             NextPairBtn.GetComponent<Button>().interactable = true;
             PlayBtn.gameObject.SetActive(false);
-
-            
+            if (currentPair == maxPairs - 1)
+            {
+                NextBtn.GetComponent<Button>().interactable = true;
+                NextPairBtn.GetComponent<Button>().interactable = false;
+            }
         }
     }
 
