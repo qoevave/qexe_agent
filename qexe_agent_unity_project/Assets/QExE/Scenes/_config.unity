@@ -3500,6 +3500,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 406215535758681026, guid: c59b31557c6c8ec4481876dc811e79d2,
         type: 3}
+      propertyPath: QuestionnaireInterfaces.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 406215535758681026, guid: c59b31557c6c8ec4481876dc811e79d2,
+        type: 3}
       propertyPath: MethodologyInterfaces.Array.data[0]
       value: 
       objectReference: {fileID: 5204218256522075081, guid: 8240c8777e3d7624197e598fe5348f96,
@@ -3545,6 +3550,12 @@ PrefabInstance:
       propertyPath: QuestionnaireInterfaces.Array.data[1]
       value: 
       objectReference: {fileID: 2980882890763121455, guid: c8674d73a6e65694097bc7cad61d0ddc,
+        type: 3}
+    - target: {fileID: 406215535758681026, guid: c59b31557c6c8ec4481876dc811e79d2,
+        type: 3}
+      propertyPath: QuestionnaireInterfaces.Array.data[2]
+      value: 
+      objectReference: {fileID: 7138896269409704967, guid: f3e7c0efdb607ff468fa37f5f2780994,
         type: 3}
     - target: {fileID: 406215535758681027, guid: c59b31557c6c8ec4481876dc811e79d2,
         type: 3}
