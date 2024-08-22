@@ -29,7 +29,7 @@ namespace extOSC
 
 		public string VideoFilePath;
 
-		public StreamWriter RecordingStream; 
+		public StreamWriter RecordingStream = null; 
 
 		public override bool IsStarted => _transmitterBackend.IsAvailable;
 
@@ -274,16 +274,12 @@ namespace extOSC
 
 			OSCConsole.Transmitted(this, packet);
 
-			if (RecordOSC)
+			if (RecordOSC == true && RecordingStream != null)
 			{
-				//if (CurrentScene == "_videoPlayer")
-				//{
+				if (this.gameObject.name == "OSCManager")
+				{
 					RecordingStream.WriteLine(CurrentScene + ' ' + Time.time + ' ' + (DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds + ' ' + VideoFilePath + ' ' + packet);
-				//}
-				//else
-				//{
-				//	RecordingStream.WriteLine(CurrentScene + " : " + packet + " : " + Time.time);
-				//}
+				}
 			}
 				
 		}
