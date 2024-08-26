@@ -3496,7 +3496,7 @@ PrefabInstance:
     - target: {fileID: 406215535758681026, guid: c59b31557c6c8ec4481876dc811e79d2,
         type: 3}
       propertyPath: MethodologyInterfaces.Array.size
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 406215535758681026, guid: c59b31557c6c8ec4481876dc811e79d2,
         type: 3}
@@ -3537,7 +3537,7 @@ PrefabInstance:
         type: 3}
       propertyPath: MethodologyInterfaces.Array.data[5]
       value: 
-      objectReference: {fileID: 8512170055536749922, guid: 500b8bf96ac89114293f42b9cec4bb31,
+      objectReference: {fileID: 7376672831891779635, guid: c0fef5fcec945884fba2ded28c10932a,
         type: 3}
     - target: {fileID: 406215535758681026, guid: c59b31557c6c8ec4481876dc811e79d2,
         type: 3}
