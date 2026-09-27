@@ -1,10 +1,24 @@
-﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets;
+using UnityEngine.InputSystem;
 
+/// <summary>
+/// Shows the QExE test interface while the participant holds (or toggles) the interface button on
+/// either controller, and keeps it parked in front of the camera while it is hidden.
+///
+/// Previously this read <c>m_Interfacing</c> from a hand-modified copy of the XRI 2.x Starter Assets
+/// <c>ActionBasedControllerManager</c>. That sample was replaced by XRI 3.x
+/// (<c>ControllerInputActionManager</c>), so the input handling now lives here and no longer depends
+/// on sample code that is overwritten whenever the XR Interaction Toolkit samples are re-imported.
+/// </summary>
 public class MenuFollow : MonoBehaviour
 {
+	public enum ActivationMode
+	{
+		/// <summary>Interface is visible only while the button is held (previous behaviour).</summary>
+		Hold,
+		/// <summary>Each press toggles the interface on or off.</summary>
+		Toggle
+	}
 
 	#region Public Variables
 
@@ -13,87 +27,141 @@ public class MenuFollow : MonoBehaviour
 
 	public GameObject TestInterface;
 
-    public TestManager testManager;
+	public TestManager testManager;
 
-    public GameObject LeftController;
-
-    public GameObject RightController;
-
+	/// <summary>Optional debug object shown alongside the interface.</summary>
 	public GameObject DevObject;
+
+	[Header("Interface button")]
+	public ActivationMode Mode = ActivationMode.Hold;
+
+	[Tooltip("Button on the left controller that opens the test interface. Either assign an action from an " +
+	         "Input Action Asset, or edit the bindings of the embedded action.")]
+	public InputActionProperty LeftInterfaceAction = new InputActionProperty(
+		CreateDefaultAction("QExE Left Interface", "LeftHand"));
+
+	[Tooltip("Button on the right controller that opens the test interface. Either assign an action from an " +
+	         "Input Action Asset, or edit the bindings of the embedded action.")]
+	public InputActionProperty RightInterfaceAction = new InputActionProperty(
+		CreateDefaultAction("QExE Right Interface", "RightHand"));
+
+	/// <summary>True while the participant has the interface open.</summary>
+	public bool IsInterfacing { get; private set; }
 
 	#endregion Public Variables
 
 	#region Private Vars
 
-	private ActionBasedControllerManager LeftActionBasedControllerManager;
+	private Camera _camera;
 
-	private ActionBasedControllerManager RightActionBasedControllerManager;
+	private bool _toggleState;
 
-	#endregion Private vars
+	#endregion Private Vars
 
+	private static InputAction CreateDefaultAction(string name, string hand)
+	{
+		var action = new InputAction(name, InputActionType.Button);
+		// A/X on Quest-style controllers, menu button on Vive wands / Index.
+		action.AddBinding($"<XRController>{{{hand}}}/primaryButton");
+		action.AddBinding($"<XRController>{{{hand}}}/menuButton");
+		return action;
+	}
 
 	private void Awake()
 	{
-        TestInterface = GameObject.Find("QExETestInterface");
-		try
+		_camera = GetComponent<Camera>();
+
+		if (TestInterface == null)
+			TestInterface = GameObject.Find("QExETestInterface");
+
+		if (testManager == null)
 		{
-			testManager = GameObject.Find("TestManager").GetComponent<TestManager>();
+			var tm = GameObject.Find("TestManager");
+			if (tm != null)
+				testManager = tm.GetComponent<TestManager>();
 		}
-		catch
-		{
-			Debug.LogWarning("testManager.cs not found in scene.");
-		}
-        
-		LeftActionBasedControllerManager = LeftController.GetComponent<ActionBasedControllerManager>();
-		RightActionBasedControllerManager = RightController.GetComponent<ActionBasedControllerManager>();
+
+		if (TestInterface == null)
+			Debug.LogWarning("QExE: MenuFollow could not find 'QExETestInterface' in the scene.");
+
+		if (testManager == null)
+			Debug.LogWarning("QExE: MenuFollow could not find 'TestManager' in the scene.");
 	}
 
-	void Start()
-    {
-		if (LeftActionBasedControllerManager == null)
-			Debug.LogWarning("QExE: Left action based controller not found");
+	private void OnEnable()
+	{
+		EnableAction(LeftInterfaceAction);
+		EnableAction(RightInterfaceAction);
+	}
 
-		if (RightActionBasedControllerManager == null)
-			Debug.LogWarning("QExE: Right action based controller not found");
+	private void OnDisable()
+	{
+		DisableAction(LeftInterfaceAction);
+		DisableAction(RightInterfaceAction);
 	}
 
 	/// <summary>
-	/// Turns the Interface on and off at the correct position depending on the controller states. 
-	/// 1. If a next button has been found, if means a menu has been loaded.
-	/// 2. If the controller state in the ActionBasedControllerManager for either left or right controller is in 'interfacing' state, turn the UI on or off.
-	/// 3. If the UI if off, update the position of the TestInterface game object. 
+	/// 1. Reads the interface button on either controller.
+	/// 2. Once a method/questionnaire interface has been loaded (TestManager found its 'Next' button),
+	///    shows or hides the interface accordingly.
+	/// 3. While hidden, re-positions the interface in front of the camera so it opens where the user looks.
 	/// </summary>
-	void Update()
+	private void Update()
 	{
-		if (testManager != null && testManager.InterfaceNextButtonFound)
-		{
-			if (LeftActionBasedControllerManager.m_Interfacing == true | RightActionBasedControllerManager.m_Interfacing == true)
-			{
-				TestInterface.SetActive(true);
-			}
-			else
-			{
-				TestInterface.SetActive(false);
-			}
-		}
+		IsInterfacing = ReadInterfaceInput();
 
-		if (!TestInterface.activeSelf)
+		if (TestInterface == null)
+			return;
+
+		if (testManager != null && testManager.InterfaceNextButtonFound)
+			TestInterface.SetActive(IsInterfacing);
+
+		if (!TestInterface.activeSelf && _camera != null)
 		{
-			TestInterface.transform.position = this.gameObject.GetComponent<Camera>().transform.position + (this.gameObject.GetComponent<Camera>().transform.forward * DistanceScale);
-			TestInterface.transform.rotation = Quaternion.Euler(+15, this.gameObject.transform.rotation.eulerAngles.y, 0);
-			TestInterface.transform.position = new Vector3(TestInterface.transform.position.x, Mathf.Clamp(TestInterface.transform.position.y - 1, this.gameObject.transform.position.y, this.gameObject.transform.position.y + 5) - 0.5f, TestInterface.transform.position.z);
+			Transform cam = _camera.transform;
+			Vector3 pos = cam.position + cam.forward * DistanceScale;
+			pos.y = Mathf.Clamp(pos.y - 1f, cam.position.y, cam.position.y + 5f) - 0.5f;
+
+			TestInterface.transform.SetPositionAndRotation(pos, Quaternion.Euler(15f, cam.rotation.eulerAngles.y, 0f));
 		}
 
 		if (DevObject != null)
-		{
-			if (LeftActionBasedControllerManager.m_Interfacing == true | RightActionBasedControllerManager.m_Interfacing == true)
-			{
-				DevObject.SetActive(true);
-			}
-			else
-			{
-				DevObject.SetActive(false);
-			}
-		}
+			DevObject.SetActive(IsInterfacing);
+	}
+
+	private bool ReadInterfaceInput()
+	{
+		if (Mode == ActivationMode.Hold)
+			return IsPressed(LeftInterfaceAction) || IsPressed(RightInterfaceAction);
+
+		if (WasPressedThisFrame(LeftInterfaceAction) || WasPressedThisFrame(RightInterfaceAction))
+			_toggleState = !_toggleState;
+
+		return _toggleState;
+	}
+
+	private static bool IsPressed(InputActionProperty property)
+	{
+		var action = property.action;
+		return action != null && action.IsPressed();
+	}
+
+	private static bool WasPressedThisFrame(InputActionProperty property)
+	{
+		var action = property.action;
+		return action != null && action.WasPressedThisFrame();
+	}
+
+	private static void EnableAction(InputActionProperty property)
+	{
+		property.action?.Enable();
+	}
+
+	private static void DisableAction(InputActionProperty property)
+	{
+		// Only disable actions owned by this component. Actions referenced from a shared asset are
+		// managed by XRI's InputActionManager and may be in use elsewhere.
+		if (property.reference == null)
+			property.action?.Disable();
 	}
 }

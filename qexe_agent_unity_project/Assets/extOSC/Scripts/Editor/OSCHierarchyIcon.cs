@@ -14,7 +14,7 @@ namespace extOSC.Editor
 
 		static OSCHierarchyIcon()
 		{
-			EditorApplication.hierarchyWindowItemOnGUI += DrawHierarchyIcon;
+			//EditorApplication.hierarchyWindowItemOnGUI += DrawHierarchyIcon;
 		}
 
 		#endregion
@@ -25,11 +25,11 @@ namespace extOSC.Editor
 		{
 			if (OSCEditorTextures.IronWall == null) return;
 
-			var gameObject = EditorUtility.InstanceIDToObject(instanceId) as GameObject;
-			if (gameObject == null) return;
+			// var gameObject = EditorUtility.InstanceIDToObject(instanceId) as GameObject;
+			// if (gameObject == null) return;
 
-			var oscBase = gameObject.GetComponent<OSCBase>();
-			if (oscBase == null) return;
+			// var oscBase = gameObject.GetComponent<OSCBase>();
+			//if (oscBase == null) return;
 
 			var rect = new Rect(selectionRect.x + selectionRect.width - 18f, selectionRect.y, 16f, 16f);
 			GUI.DrawTexture(rect, OSCEditorTextures.IronWallSmall);

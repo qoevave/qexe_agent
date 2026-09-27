@@ -17,7 +17,7 @@ namespace extOSC
         // public InputActionReference _leftTeleportSelectReference = null;
         // public InputActionReference _rightTeleportSelectReference = null;
 
-        public TeleportationProvider _teleportationProvider;
+        public UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationProvider _teleportationProvider;
 
         public GameObject leftHand;
         public GameObject rightHand;

@@ -190,7 +190,7 @@ public class TestManager : MonoBehaviour
         if(ThisSceneType == SceneType.evaluationScene && QuestionnaireIntegration == "Lace")
 		{
             Debug.Log("<color=bright_white><b>QExE: </b></color>'Next' button pressed. Load the next scene ... ");
-            SceneManager.LoadScene(NextSceneID, LoadSceneMode.Single);
+            LoadNextScene();
         }
 
         // If the current scene == evaluationScene, and the questionnaire is set to 'End' we check ...
@@ -207,7 +207,7 @@ public class TestManager : MonoBehaviour
                 Debug.Log("<color=bright_white><b>QExE: </b></color>Setting next item in server");
             }
             Debug.Log("<color=bright_white><b>QExE: </b></color> 'Next' button pressed. Load the next scene ... ");
-            SceneManager.LoadScene(NextSceneID, LoadSceneMode.Single);
+            LoadNextScene();
         }
 
         // In the remaining combination of cases, we tell the server to load the next item. 
@@ -228,6 +228,26 @@ public class TestManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Loads NextSceneID, unless the host never sent it (then the test stays in the current scene).
+    /// </summary>
+    private void LoadNextScene()
+    {
+        if (string.IsNullOrEmpty(NextSceneID))
+        {
+            Debug.LogError("<color=bright_white><b>QExE: </b></color>No next scene received from the host (Max). " +
+                           "Check the Max console: is a config loaded, and does it contain Scenes?");
+            return;
+        }
+        if (!Application.CanStreamedLevelBeLoaded(NextSceneID))
+        {
+            Debug.LogError("<color=bright_white><b>QExE: </b></color>Scene '" + NextSceneID + "' is not in the build profile scene list. " +
+                           "Add it, or fix unityScene_ID in the config.");
+            return;
+        }
+        SceneManager.LoadScene(NextSceneID, LoadSceneMode.Single);
+    }
+
+    /// <summary>
     /// Function to tell the server to load the next item. 
     /// </summary>
     private void NextItem()
@@ -236,7 +256,7 @@ public class TestManager : MonoBehaviour
         Debug.Log("<color=bright_white><b>QExE: </b></color>Setting next item in server");
 
         Debug.Log("<color=bright_white><b>QExE: </b></color>'Next' button pressed. Load the next scene ... ");
-        SceneManager.LoadScene(NextSceneID, LoadSceneMode.Single);
+        LoadNextScene();
     }
 
 
@@ -349,7 +369,9 @@ public class TestManager : MonoBehaviour
     /// <param name="current"></param>
     public void OnSceneUnloaded(Scene current)
 	{
-        NextButton.onClick.RemoveListener(() => OnNextButton());
+        // The interface (and its buttons) are destroyed with the scene, so their listeners go with them.
+        NextButton = null;
+        StartPlaybackButton = null;
         Debug.Log("<color=bright_white><b>QExE: </b></color>Scene unloaded: " + current.name);
 
         SceneOSCManagerFound = false;
@@ -367,21 +389,42 @@ public class TestManager : MonoBehaviour
     /// <param name="method"></param>
     private void SetMethodologyInterface(string method)
 	{
-        // Instantiate correct test interface prefab
+        if (TestInterface == null)
+        {
+            Debug.LogError("QExE: no 'QExETestInterface' object in scene " + SceneManager.GetActiveScene().name + ", cannot load the method interface.");
+            return;
+        }
+
+        // Instantiate correct test interface prefab: first from the MethodologyInterfaces list,
+        // otherwise from Resources/QExEMethods/<method> (e.g. the Localization interface).
+        GameObject interfacePrefab = null;
         foreach (GameObject Interface in MethodologyInterfaces)
 		{
-            if (Interface.name == method)
-			{
-              Debug.Log("<color=bright_white><b>QExE: </b></color> Method found. " + Interface.name + ": The method interface provided by the server(JSON file) is listed in the Method Interfaces array. Importing into scene.");
-              _Methodology = Instantiate(Interface, TestInterface.transform.position, Quaternion.Euler(TestInterface.transform.rotation.eulerAngles.x, TestInterface.transform.rotation.eulerAngles.y, TestInterface.transform.rotation.eulerAngles.z), TestInterface.transform) as GameObject;
-            }
+            if (Interface != null && Interface.name == method)
+                interfacePrefab = Interface;
 		}
+        if (interfacePrefab == null)
+            interfacePrefab = Resources.Load<GameObject>("QExEMethods/" + method);
+
+        if (interfacePrefab == null)
+        {
+            Debug.LogError("<color=bright_white><b>QExE: </b></color>No method interface named '" + method + "'. Add it to the Methodology Interfaces list or to Resources/QExEMethods.");
+            return;
+        }
+
+        Debug.Log("<color=bright_white><b>QExE: </b></color> Method found. " + interfacePrefab.name + ". Importing into scene.");
+        _Methodology = Instantiate(interfacePrefab, TestInterface.transform.position, TestInterface.transform.rotation, TestInterface.transform);
 
         // Get reference to the Next and Startplayback buttons
-        NextButton = GameObject.Find("btn/Next").GetComponent<Button>();
-        StartPlaybackButton = GameObject.Find("btn/StartPlayback").GetComponent<Button>();
-        InterfaceNextButtonFound = true;
-        InterfacePlayButtonFound = true;
+        NextButton = FindButton(_Methodology, "btn/Next");
+        StartPlaybackButton = FindButton(_Methodology, "btn/StartPlayback");
+        InterfaceNextButtonFound = NextButton != null;
+        InterfacePlayButtonFound = StartPlaybackButton != null;
+        if (NextButton == null || StartPlaybackButton == null)
+        {
+            Debug.LogError("<color=bright_white><b>QExE: </b></color>Method interface '" + method + "' needs buttons named 'btn/Next' and 'btn/StartPlayback'.");
+            return;
+        }
 
         // Set the next button interatable false, so users do not accidently click it to start with. 
         NextButton.interactable = false;
@@ -422,6 +465,20 @@ public class TestManager : MonoBehaviour
     }
 
 
+    /// <summary>Finds a button by object name below root (names like 'btn/Next' contain a slash, so
+    /// GameObject.Find cannot be relied on).</summary>
+    private static Button FindButton(GameObject root, string objectName)
+    {
+        if (root == null)
+            return null;
+        foreach (var button in root.GetComponentsInChildren<Button>(true))
+        {
+            if (button.gameObject.name == objectName)
+                return button;
+        }
+        return null;
+    }
+
     // *****************************
     // OSC Messaging
     // *****************************
@@ -437,9 +494,11 @@ public class TestManager : MonoBehaviour
                     Debug.LogWarning("<color=red><b>QExE:udp:in: </b<</color> <<-- is_json_loaded?: No JSON file has been loaded into the server. Please load a JSON file in QExE host.");
 
                 if (value == 1)
+                {
                     Debug.Log("<color=cyan><b>QExE:udp:in: </b></color> <<-- is_json_loaded?: A JSON file has been loaded. Continue config ...");
                     SendMessage("/control/", "TestManager get_paradigm_information");
                     Debug.Log("<color=cyan><b>QExE:udp:out: </b></color> -->> requesting_paradigm_information");
+                }
                 break;
 
             case "set_paradigm_information":

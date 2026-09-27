@@ -46,7 +46,7 @@ public class TestRecorder : MonoBehaviour
             StartCoroutine(RequestSubjectsDirectory());
         }
 
-        if(scene.name != "config" && resultsDirectoryReceived == true && recordingStarted == false)
+        if(scene.name != "_config" && resultsDirectoryReceived == true && recordingStarted == false)
 		{
             _transmitter.RecordingStream = stream;
             _transmitter.RecordOSC = true;
@@ -102,7 +102,9 @@ public class TestRecorder : MonoBehaviour
 
     public void OpenStream(string path, string name)
     {
-        stream = new StreamWriter(path + "/behaviour" + name + ".txt", false);
+        // Append (never overwrite) and flush every line, so a crash loses nothing.
+        stream = new StreamWriter(path + "/behaviour" + name + ".txt", true);
+        stream.AutoFlush = true;
         _transmitter.RecordingStream = stream;
         _transmitter.RecordOSC = true;
     }
