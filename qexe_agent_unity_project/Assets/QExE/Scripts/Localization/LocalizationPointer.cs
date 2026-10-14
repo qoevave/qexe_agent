@@ -90,6 +90,25 @@ namespace QExE.Localization
         private Transform _reticle;
         private Material _material;
 
+        // Extra things the ray can press (e.g. the A/B buttons of paired localization). Empty by default.
+        private readonly System.Collections.Generic.List<ILocalizationPressable> _pressables =
+            new System.Collections.Generic.List<ILocalizationPressable>();
+        private ILocalizationPressable _hoveredPressable;
+
+        /// <summary>Adds a pressable that is hit-tested before the dial (see <see cref="ILocalizationPressable"/>).</summary>
+        public void RegisterPressable(ILocalizationPressable pressable)
+        {
+            if (pressable != null && !_pressables.Contains(pressable)) _pressables.Add(pressable);
+        }
+
+        public void UnregisterPressable(ILocalizationPressable pressable)
+        {
+            if (pressable == null) return;
+            _pressables.Remove(pressable);
+            if (_hoveredPressable == pressable) _hoveredPressable = null;
+            pressable.SetHover(false, Vector3.zero);
+        }
+
         private static InputAction CreateDefaultConfirmAction()
         {
             var action = new InputAction("QExE Localization Confirm", InputActionType.Button);
@@ -150,21 +169,39 @@ namespace QExE.Localization
             float dialAzimuth = 0f;
             bool dialCentre = false;
 
+            ILocalizationPressable pressable = null;
+            Vector3 pressablePoint = Vector3.zero;
+
             if (haveTracking)
             {
                 sample = ComputeSample();
-                onDial = dial != null && dial.isActiveAndEnabled &&
+                for (int i = 0; i < _pressables.Count && pressable == null; i++)
+                {
+                    if (_pressables[i] != null && _pressables[i].TryHit(pointerOrigin.position, pointerOrigin.forward, out pressablePoint))
+                        pressable = _pressables[i];
+                }
+                onDial = pressable == null && dial != null && dial.isActiveAndEnabled &&
                          dial.Raycast(pointerOrigin.position, pointerOrigin.forward, out dialPoint, out dialAzimuth, out dialCentre);
             }
 
+            if (_hoveredPressable != null && _hoveredPressable != pressable) _hoveredPressable.SetHover(false, Vector3.zero);
+            if (pressable != null) pressable.SetHover(true, pressablePoint);
+            _hoveredPressable = pressable;
+
             if (dial != null) dial.SetHover(onDial, dialPoint);
-            UpdateVisuals(haveTracking && (VisualsVisible || onDial), onDial ? dialPoint : sample.WorldPoint);
+            bool onPressable = pressable != null;
+            UpdateVisuals(haveTracking && (VisualsVisible || onDial || onPressable),
+                          onPressable ? pressablePoint : onDial ? dialPoint : sample.WorldPoint);
 
             bool pressed = haveTracking && confirmAction.action != null && confirmAction.action.WasPressedThisFrame();
             if (!pressed)
                 return;
 
-            if (onDial)
+            if (onPressable)
+            {
+                pressable.Press(pressablePoint);
+            }
+            else if (onDial)
             {
                 DialPressed?.Invoke(dialAzimuth, dialCentre);
             }

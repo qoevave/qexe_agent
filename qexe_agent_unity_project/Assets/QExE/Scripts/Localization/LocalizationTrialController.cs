@@ -44,7 +44,7 @@ namespace QExE.Localization
 
         public LocalizationPointer pointer;
 
-        [Tooltip("Optional top-down dial for setting a preliminary azimuth (also while the sound plays).")]
+        [Tooltip("Optional top-down dial for setting a preliminary azimuth (also while the sound plays, unless hideUIWhileListening is on).")]
         public LocalizationDial dial;
 
         [Tooltip("Optional horizontal ring around the head (spatial reference + preliminary marker).")]
@@ -71,6 +71,20 @@ namespace QExE.Localization
 
         [Tooltip("Show the pointer only while a response is expected (otherwise also while listening).")]
         public bool hidePointerWhileListening = false;
+
+        [Header("While listening")]
+        [Tooltip("Hide the dial, pointer and markers from the moment an answer is given until the response window opens " +
+                 "(i.e. until the next sound has finished, unless Max allows responses during the stimulus). " +
+                 "Keeps the participant looking ahead instead of at the dial. In training, the feedback is still shown first. " +
+                 "Note: with this on, no preliminary dial answer can be set while the sound plays.")]
+        public bool hideUIWhileListening = true;
+
+        [Tooltip("Keep the head ring visible while the rest of the UI is hidden.")]
+        public bool keepRingWhileListening = false;
+
+        [Tooltip("Keep the front alignment target visible while the sound plays. Off = it disappears at stimulus onset " +
+                 "(it is always shown while the participant has to face the front).")]
+        public bool showAlignmentWhileListening = true;
 
         [Header("Events")]
         public UnityEvent<int, int> onTrialStarted = new UnityEvent<int, int>();
@@ -117,7 +131,10 @@ namespace QExE.Localization
                     case LocalizationState.Starting: return "Starting... close the menu and get ready.";
                     case LocalizationState.Aligning: return $"Trial {CurrentTrial + 1} / {TrialCount}: face the front target and hold still.";
                     case LocalizationState.AlignedWaiting: return $"Trial {CurrentTrial + 1} / {TrialCount}: listen.";
-                    case LocalizationState.Listening: return $"Trial {CurrentTrial + 1} / {TrialCount}: listen. You can mark the direction on the dial.";
+                    case LocalizationState.Listening:
+                        return hideUIWhileListening
+                            ? $"Trial {CurrentTrial + 1} / {TrialCount}: listen."
+                            : $"Trial {CurrentTrial + 1} / {TrialCount}: listen. You can mark the direction on the dial.";
                     case LocalizationState.Responding:
                         if (requireCentreConfirm)
                             return _candidate.HasValue
@@ -165,7 +182,6 @@ namespace QExE.Localization
                 pointer.Confirmed += OnPointerConfirmed;
                 pointer.DialPressed += OnDialPressed;
                 pointer.SetArmed(false);
-                pointer.SetVisualsVisible(!hidePointerWhileListening);
             }
             else
             {
@@ -405,12 +421,9 @@ namespace QExE.Localization
 
             _lastSubmitted = sample;
             State = LocalizationState.Submitted;
-            if (pointer != null)
-            {
-                pointer.SetArmed(false);
-                if (hidePointerWhileListening) pointer.SetVisualsVisible(false);
-            }
+            if (pointer != null) pointer.SetArmed(false);
             UpdateDialSubmitHint();
+            UpdateAidVisibility();
             onResponseSubmitted.Invoke(CurrentTrial);
 
             Debug.Log($"<color=cyan><b>QExE:loc:</b></color> trial {CurrentTrial} ({source}): az {sample.Azimuth:F1}, el {sample.Elevation:F1}, rt {rtMs:F0} ms" +
@@ -439,17 +452,60 @@ namespace QExE.Localization
             dial.SetSubmitReady(ready);
         }
 
-        /// <summary>Dial only during trials; ring during trials (and optionally before/after).</summary>
+        /// <summary>
+        /// True while the response UI should be out of sight (hideUIWhileListening): from the moment an
+        /// answer is given (after the training feedback, if any) until the response window opens.
+        /// </summary>
+        private bool UIHiddenForListening
+        {
+            get
+            {
+                if (!hideUIWhileListening) return false;
+                switch (State)
+                {
+                    case LocalizationState.Starting:
+                    case LocalizationState.Aligning:
+                    case LocalizationState.AlignedWaiting:
+                    case LocalizationState.Listening:
+                        return true;
+                    case LocalizationState.Submitted:
+                        return !IsTraining; // training: keep the UI up to show the correct direction
+                    default:
+                        return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Single place that decides what is visible: dial and pointer during trials (hidden while listening
+        /// if hideUIWhileListening), ring during trials (and optionally before/after), alignment target while
+        /// the participant has to face the front.
+        /// </summary>
         private void UpdateAidVisibility()
         {
             bool inBlock = State == LocalizationState.Starting || State == LocalizationState.Aligning ||
                            State == LocalizationState.AlignedWaiting || State == LocalizationState.Listening ||
                            State == LocalizationState.Responding || State == LocalizationState.Submitted;
             bool facingFront = State == LocalizationState.Starting || State == LocalizationState.Aligning ||
-                               State == LocalizationState.AlignedWaiting || State == LocalizationState.Listening;
-            if (dial != null) dial.SetVisible(inBlock);
-            if (headRing != null) headRing.SetVisible(inBlock || showRingOutsideTrials);
+                               State == LocalizationState.AlignedWaiting ||
+                               (State == LocalizationState.Listening && showAlignmentWhileListening);
+            bool hidden = UIHiddenForListening;
+
+            if (dial != null) dial.SetVisible(inBlock && !hidden);
+            if (headRing != null) headRing.SetVisible(inBlock ? (!hidden || keepRingWhileListening) : showRingOutsideTrials);
             if (alignment != null) alignment.SetVisible(facingFront);
+
+            if (_candidateDot != null) _candidateDot.gameObject.SetActive(!hidden && _candidate.HasValue);
+            if (_targetDot != null && hidden) _targetDot.gameObject.SetActive(false);
+
+            if (pointer != null)
+            {
+                bool pointerVisible;
+                if (State == LocalizationState.Responding) pointerVisible = true;
+                else if (State == LocalizationState.Complete) pointerVisible = false;
+                else pointerVisible = !hidePointerWhileListening && !hidden;
+                pointer.SetVisualsVisible(pointerVisible);
+            }
         }
 
         // ------------------------------------------------------------------------------------------
@@ -538,12 +594,8 @@ namespace QExE.Localization
 
             State = LocalizationState.Listening;
             ClearPreliminary();
+            if (pointer != null) pointer.SetArmed(false);
             UpdateAidVisibility();
-            if (pointer != null)
-            {
-                pointer.SetArmed(false);
-                pointer.SetVisualsVisible(!hidePointerWhileListening);
-            }
             onTrialStarted.Invoke(trial, count);
         }
 
@@ -556,11 +608,7 @@ namespace QExE.Localization
             State = LocalizationState.Responding;
             UpdateDialSubmitHint();
             UpdateAidVisibility();
-            if (pointer != null)
-            {
-                pointer.SetVisualsVisible(true);
-                pointer.SetArmed(true);
-            }
+            if (pointer != null) pointer.SetArmed(true);
             onResponseWindowOpened.Invoke(trial);
         }
 
@@ -570,12 +618,8 @@ namespace QExE.Localization
             _trackingDeviation = false;
             State = LocalizationState.Complete;
             ClearPreliminary();
+            if (pointer != null) pointer.SetArmed(false);
             UpdateAidVisibility();
-            if (pointer != null)
-            {
-                pointer.SetArmed(false);
-                pointer.SetVisualsVisible(false);
-            }
             onBlockComplete.Invoke(count);
         }
 

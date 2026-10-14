@@ -23,6 +23,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/QExE/Scenes/_localization.unity
     guid: 0532d45c558db43419269e50ee5b6149
+  - enabled: 1
+    path: Assets/QExE/Scenes/_pairedLocalization.unity
+    guid: 19a59dc6c5fc8e6458bc49ff1f0a1fc0
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 6a0ee7e15680d524696129c7ae2e5d8c,
       type: 2}

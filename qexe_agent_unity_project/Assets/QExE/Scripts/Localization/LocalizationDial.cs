@@ -33,6 +33,34 @@ namespace QExE.Localization
         [Tooltip("Hits slightly outside the rim still count, as a fraction of the radius.")]
         public float rimTolerance = 0.15f;
 
+        [Header("Ticks")]
+        [Tooltip("Degrees between major ticks (longer and thicker). Rounded so the ticks divide the circle evenly.")]
+        [Range(5f, 180f)]
+        public float majorTickSpacing = 90f;
+        [Tooltip("Degrees between minor ticks. 0 = no minor ticks. Minor ticks that fall on a major tick are skipped.")]
+        [Range(0f, 90f)]
+        public float minorTickSpacing = 30f;
+        [Tooltip("Major tick length, as a fraction of the dial radius (drawn inwards from the rim).")]
+        [Range(0f, 1f)]
+        public float majorTickLength = 0.22f;
+        [Tooltip("Minor tick length, as a fraction of the dial radius (drawn inwards from the rim).")]
+        [Range(0f, 1f)]
+        public float minorTickLength = 0.12f;
+        [Tooltip("Major tick width, as a multiple of lineWidth.")]
+        public float majorTickWidth = 1.5f;
+        [Tooltip("Minor tick width, as a multiple of lineWidth.")]
+        public float minorTickWidth = 1f;
+        [Tooltip("Colour of the minor ticks (major ticks use lineColor).")]
+        public Color minorTickColor = new Color(1f, 1f, 1f, 0.85f);
+        [Tooltip("The front tick (azimuth 0) is always drawn in frontColor: its length inwards, as a fraction of the radius.")]
+        [Range(0f, 1f)]
+        public float frontTickLength = 0.35f;
+        [Tooltip("How far the front tick sticks out past the rim, as a fraction of the radius.")]
+        [Range(0f, 0.5f)]
+        public float frontTickOvershoot = 0.12f;
+        [Tooltip("Front tick width, as a multiple of lineWidth.")]
+        public float frontTickWidth = 2f;
+
         [Header("Look")]
         [Tooltip("Semi-transparent disc behind the dial lines.")]
         public bool showBackground = true;
@@ -45,6 +73,8 @@ namespace QExE.Localization
         public Color submitIdleColor = new Color(1f, 1f, 1f, 0.3f);
         [Tooltip("Training feedback: colour of the correct direction.")]
         public Color targetColor = new Color(0.25f, 0.85f, 1f, 1f);
+        [Tooltip("Reference marker (paired localization: the locked A answer while answering B).")]
+        public Color referenceColor = new Color(0.6f, 0.6f, 0.6f, 0.9f);
 
         [Header("Counter and status text (above the dial)")]
         public bool showCounter = true;
@@ -54,6 +84,8 @@ namespace QExE.Localization
         public Color textColor = new Color(1f, 1f, 1f, 0.95f);
         [Tooltip("Distance of the text above the dial's top edge, in metres.")]
         public float textGap = 0.03f;
+        [Tooltip("Extra space between the dial and the text, in metres (paired localization puts its A/B buttons there). 0 for the single test.")]
+        public float textExtraOffset = 0f;
 
         public bool Visible { get; private set; } = true;
         public float? PreliminaryAzimuth { get; private set; }
@@ -66,6 +98,8 @@ namespace QExE.Localization
         [SerializeField, HideInInspector] private Transform _targetDot;
         [SerializeField, HideInInspector] private TextMeshPro _counter;
         [SerializeField, HideInInspector] private TextMeshPro _status;
+        [SerializeField, HideInInspector] private LineRenderer _referenceLine;
+        [SerializeField, HideInInspector] private Transform _referenceDot;
 
         protected override string VisualsName => "Dial Visuals";
 
@@ -109,6 +143,42 @@ namespace QExE.Localization
             _targetLine.SetPosition(1, d * radius * 1.08f);
             _targetDot.localPosition = d * radius * 1.08f;
         }
+
+        /// <summary>
+        /// Shows (or hides with null) a neutral reference marker, e.g. the locked A answer in paired
+        /// localization. Created on first use if the visuals were built before this marker existed.
+        /// </summary>
+        public void SetReference(float? azimuth)
+        {
+            if (_referenceLine == null || _referenceDot == null)
+            {
+                if (!azimuth.HasValue || visualsRoot == null) return;
+                CreateReferenceMarker(visualsRoot);
+            }
+            _referenceLine.enabled = azimuth.HasValue;
+            _referenceDot.gameObject.SetActive(azimuth.HasValue);
+            if (!azimuth.HasValue) return;
+
+            Vector3 d = DialDirection(azimuth.Value);
+            _referenceLine.positionCount = 2;
+            _referenceLine.SetPosition(0, d * radius * centreZone);
+            _referenceLine.SetPosition(1, d * radius);
+            _referenceDot.localPosition = d * radius;
+        }
+
+        private void CreateReferenceMarker(Transform root)
+        {
+            _referenceLine = Line(root, "ReferenceLine", lineWidth * 2f, referenceColor, false);
+            _referenceDot = Dot(root, "ReferenceDot", radius * 0.1f, referenceColor);
+            _referenceLine.enabled = false;
+            _referenceDot.gameObject.SetActive(false);
+        }
+
+        /// <summary>The generated visuals (dial plane = local XY, +Y = front, participant looks along +Z).</summary>
+        public Transform VisualsRoot => visualsRoot;
+
+        /// <summary>Local Y of the dial's top edge including the front tick (for placing things above the dial).</summary>
+        public float TopEdgeLocalY => radius * (1f + Mathf.Max(0f, frontTickOvershoot));
 
         /// <summary>Highlights the centre zone when pressing it would confirm an answer.</summary>
         public void SetSubmitReady(bool ready)
@@ -216,17 +286,7 @@ namespace QExE.Localization
             for (int i = 0; i < segments; i++)
                 circle.SetPosition(i, DialDirection(i * 360f / segments) * radius);
 
-            for (int az = 0; az < 360; az += 30)
-            {
-                bool front = az == 0;
-                bool cardinal = az % 90 == 0;
-                var tick = Line(root, "Tick_" + az, lineWidth * (front ? 2f : cardinal ? 1.5f : 1f),
-                                front ? frontColor : lineColor, false);
-                Vector3 d = DialDirection(az);
-                tick.positionCount = 2;
-                tick.SetPosition(0, d * radius * (front ? 0.65f : cardinal ? 0.78f : 0.88f));
-                tick.SetPosition(1, d * radius * (front ? 1.12f : 1f));
-            }
+            BuildTicks(root);
 
             // "You" at the centre: a small head with a nose pointing to the front.
             var headCircle = Line(root, "Head", lineWidth, lineColor, true);
@@ -244,13 +304,14 @@ namespace QExE.Localization
             for (int i = 0; i < 48; i++)
                 _centreRing.SetPosition(i, DialDirection(i * 7.5f) * radius * centreZone);
 
+            CreateReferenceMarker(root);
             _markerLine = Line(root, "MarkedLine", lineWidth * 2.5f, markerColor, false);
             _markerDot = Dot(root, "MarkedDot", radius * 0.12f, markerColor);
             _hoverDot = Dot(root, "HoverDot", radius * 0.06f, Color.white);
             _targetLine = Line(root, "TargetLine", lineWidth * 2.5f, targetColor, false);
             _targetDot = Dot(root, "TargetDot", radius * 0.12f, targetColor);
 
-            float y = radius * 1.12f + textGap;
+            float y = radius * 1.12f + textGap + Mathf.Max(0f, textExtraOffset);
             if (showStatus)
             {
                 _status = LocalizationVisuals.CreateLabel(root, "Status", "Listen", statusHeight, textColor);
@@ -271,6 +332,68 @@ namespace QExE.Localization
             SetSubmitReady(false);
             visualsRoot = root;
             SetVisible(Application.isPlaying ? Visible : true);
+        }
+
+        /// <summary>
+        /// Major ticks every <see cref="majorTickSpacing"/> degrees, minor ticks every
+        /// <see cref="minorTickSpacing"/> degrees in between, and the highlighted front tick at 0.
+        /// Spacings are rounded so the ticks divide 360 evenly (as on the head ring).
+        /// </summary>
+        private void BuildTicks(Transform root)
+        {
+            float[] majors = EvenAngles(majorTickSpacing);
+            float[] minors = minorTickSpacing > 0f ? EvenAngles(minorTickSpacing) : new float[0];
+
+            foreach (float az in majors)
+            {
+                if (IsFront(az))
+                    AddTick(root, "Tick_Front", 0f, frontTickLength, frontTickOvershoot, frontTickWidth, frontColor);
+                else
+                    AddTick(root, "Tick_Major_" + AngleName(az), az, majorTickLength, 0f, majorTickWidth, lineColor);
+            }
+
+            foreach (float az in minors)
+            {
+                if (IsFront(az) || OnAny(az, majors)) continue;
+                AddTick(root, "Tick_Minor_" + AngleName(az), az, minorTickLength, 0f, minorTickWidth, minorTickColor);
+            }
+        }
+
+        private void AddTick(Transform root, string name, float azimuth, float lengthInside, float overshoot,
+                             float widthScale, Color color)
+        {
+            var tick = Line(root, name, lineWidth * Mathf.Max(0f, widthScale), color, false);
+            Vector3 d = DialDirection(azimuth);
+            tick.positionCount = 2;
+            tick.SetPosition(0, d * radius * (1f - lengthInside));
+            tick.SetPosition(1, d * radius * (1f + overshoot));
+        }
+
+        /// <summary>Angles 0..360 (exclusive) spaced as close to <paramref name="spacing"/> as divides the circle evenly.</summary>
+        private static float[] EvenAngles(float spacing)
+        {
+            int count = Mathf.Max(1, Mathf.RoundToInt(360f / Mathf.Max(1f, spacing)));
+            var angles = new float[count];
+            for (int i = 0; i < count; i++)
+                angles[i] = i * 360f / count;
+            return angles;
+        }
+
+        private static bool IsFront(float az)
+        {
+            return Mathf.Abs(Mathf.DeltaAngle(az, 0f)) < 0.01f;
+        }
+
+        private static bool OnAny(float az, float[] angles)
+        {
+            foreach (float a in angles)
+                if (Mathf.Abs(Mathf.DeltaAngle(az, a)) < 0.01f) return true;
+            return false;
+        }
+
+        private static string AngleName(float az)
+        {
+            return az.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
         }
     }
 }
